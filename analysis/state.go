@@ -2,6 +2,7 @@ package analysis
 
 import (
 	"fmt"
+	"log"
 	"lsp-go/lsp"
 	"strings"
 )
@@ -16,17 +17,34 @@ func NewState() State {
 	}
 }
 
-func getDiagnostics(text string) []lsp.Diagnostics {
+func getDiagnostics(row int, line string) []lsp.Diagnostics {
+	diagostics := []lsp.Diagnostics{}
+	// for row, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, "define variable") {
+			if !strings.Contains(line, "no-undo") {
+				diagostics = append(diagostics, createDiagnostics(row, len(line), "no-undo is missing"))
+			}
+		}
+	// }
+	return diagostics
+}
+
+func ProcessDocument(logger *log.Logger, text string) []lsp.Diagnostics {
+	var new_content string
+	var end_char string
 	diagostics := []lsp.Diagnostics{}
 	for row, line := range strings.Split(text, "\n") {
-		if strings.Contains(line, "VS Code") {
-			idx := strings.Index(line, "VS Code")
-			diagostics = append(diagostics, lsp.Diagnostics{
-				Range:    LineRange(row, idx, idx+len("VS Code")),
-				Severity: 1,
-				Source:   "Common Sence",
-				Message:  "Please make sure to use good language in this video",
-			})
+		if line != "" {
+			end_char = line[len(line) - 1:]
+			if end_char == "." || end_char == ":" {
+				new_content = new_content + " " + line + "\n"
+				logger.Println("ERRORRRRRR.........")
+				diagostics = append(diagostics, getDiagnostics(row, new_content)...)
+			} else if end_char == " " {
+				new_content = new_content + line
+			} else{
+				new_content = new_content + " " + line
+			}
 		}
 	}
 	return diagostics
@@ -34,12 +52,12 @@ func getDiagnostics(text string) []lsp.Diagnostics {
 
 func (s *State) OpenDocument(uri, text string) []lsp.Diagnostics {
 	s.Documents[uri] = text
-	return getDiagnostics(text)
+	return getDiagnostics(0,text)
 }
 
-func (s *State) UpdateDocument(uri, text string) []lsp.Diagnostics {
-	s.Documents[uri] = text
-	return getDiagnostics(text)
+func (s *State) UpdateDocument(logger *log.Logger, uri string, change lsp.TextDocumentContentChangeEvent) []lsp.Diagnostics {
+	s.Documents[uri] = change.Text
+	return ProcessDocument(logger, s.Documents[uri])
 }
 
 func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverResponse {
@@ -78,14 +96,23 @@ func (s *State) Definition(id int, uri string, position lsp.Position) lsp.Defini
 	}
 }
 
-func LineRange(line, start, end int) lsp.Range {
+func createDiagnostics(row, line int, message string) lsp.Diagnostics {
+	return lsp.Diagnostics{
+		Range:    LineRange(row, row, 0, line),
+		Severity: 1,
+		Source:   "progress_ls",
+		Message:  message,
+	}
+}
+
+func LineRange(sline, eline, start, end int) lsp.Range {
 	return lsp.Range{
 		Start: lsp.Position{
-			Line:      line,
+			Line:      sline,
 			Character: start,
 		},
 		End:   lsp.Position{
-			Line:      line,
+			Line:      eline,
 			Character: end,
 		},
 	}
@@ -101,7 +128,7 @@ func (s *State) CodeAction(id int, uri string) lsp.CodeActionResponse {
 			replaceChange := map[string][]lsp.TextEdit{}
 			replaceChange[uri] = []lsp.TextEdit{
 				{
-					Range: LineRange(row, idx, idx + len("VS Code")),
+					Range: LineRange(row, row, idx, idx + len("VS Code")),
 					NewText: "Neovim",
 				},
 			}
@@ -114,7 +141,7 @@ func (s *State) CodeAction(id int, uri string) lsp.CodeActionResponse {
 			censorChanges := map[string][]lsp.TextEdit{}
 			censorChanges[uri] = []lsp.TextEdit{
 				{
-					Range:   LineRange(row, idx, idx + len("VS Code")),
+					Range:   LineRange(row, row, idx, idx + len("VS Code")),
 					NewText: "VS C*de",
 				},
 			}
@@ -141,6 +168,13 @@ func (s *State) Completion(id int, uri string) lsp.CompletionResponse {
 			Label:         "Neovim (BTW)",
 			Detail:        "I use neovim btw",
 			Documentation: "Completion for the most superior text editor",
+			Kind: 			lsp.Keyword,
+		},
+		{
+			Label:         "Dilip Chauhan",
+			Detail:        "I use neovim btw",
+			Documentation: "Completion for the most superior text editor",
+			Kind: 			lsp.Class,
 		},
 	}
 

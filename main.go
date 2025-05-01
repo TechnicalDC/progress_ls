@@ -47,6 +47,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			request.Params.ClientInfo.Version)
 
 		response = lsp.NewInitializeResponse(request.ID)
+		logger.Printf("initialize: %s",rpc.EncodeMessage(response))
 		writeResponse(writer, response)
 		logger.Print("Sent the reply to neovim")
 	case "textDocument/didOpen":
@@ -74,8 +75,9 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 		logger.Printf("Changed: %s", request.Params.TextDocument.URI)
+		logger.Printf("didChange: %s",content)
 		for _, change := range request.Params.ContentChanges {
-			diagnostics := state.UpdateDocument(request.Params.TextDocument.URI, change.Text)
+			diagnostics := state.UpdateDocument(logger, request.Params.TextDocument.URI, change)
 			writeResponse(writer, lsp.PublishDiagosticsNotification{
 				Notification: lsp.Notification{
 					RPC:    "2.0",

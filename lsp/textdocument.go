@@ -1,5 +1,13 @@
 package lsp
 
+type TextDocumentSyncKind int
+
+const (
+	None TextDocumentSyncKind = iota
+	Full
+	Incremental
+)
+
 type TextDocmentItem struct {
 	URI        string `json:"uri"`
 	LanguageId string `json:"languageId"`

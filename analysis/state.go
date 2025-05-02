@@ -19,11 +19,14 @@ func NewState() State {
 
 func getDiagnostics(logger *log.Logger, row int, text string) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
-	for _, line := range strings.Split(text, ". ") {
-		if strings.Contains(line, "define variable") {
-			if !strings.Contains(line, "no-undo") {
-				diagostics = append(diagostics, createDiagnostics(row, len(line), "no-undo is missing"))
-			}
+
+	if len(strings.Split(text, ". ")) > 1 {
+		diagostics = append(diagostics, createDiagnostics(row, row, len(text), "single line cannot contains multiple statements"))
+	}
+
+	if strings.Contains(text, "define variable") {
+		if !strings.Contains(text, "no-undo") {
+			diagostics = append(diagostics, createDiagnostics(row, row, len(text), "no-undo is missing"))
 		}
 	}
 	return diagostics
@@ -96,9 +99,9 @@ func (s *State) Definition(id int, uri string, position lsp.Position) lsp.Defini
 	}
 }
 
-func createDiagnostics(row, line int, message string) lsp.Diagnostics {
+func createDiagnostics(srow, erow, line int, message string) lsp.Diagnostics {
 	return lsp.Diagnostics{
-		Range:    LineRange(row, row, 0, line),
+		Range:    LineRange(srow, erow, 0, line),
 		Severity: 1,
 		Source:   "progress_ls",
 		Message:  message,

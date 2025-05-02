@@ -17,15 +17,15 @@ func NewState() State {
 	}
 }
 
-func getDiagnostics(row int, line string) []lsp.Diagnostics {
+func getDiagnostics(logger *log.Logger, row int, text string) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
-	// for row, line := range strings.Split(text, "\n") {
+	for _, line := range strings.Split(text, ". ") {
 		if strings.Contains(line, "define variable") {
 			if !strings.Contains(line, "no-undo") {
 				diagostics = append(diagostics, createDiagnostics(row, len(line), "no-undo is missing"))
 			}
 		}
-	// }
+	}
 	return diagostics
 }
 
@@ -38,8 +38,8 @@ func ProcessDocument(logger *log.Logger, text string) []lsp.Diagnostics {
 			end_char = line[len(line) - 1:]
 			if end_char == "." || end_char == ":" {
 				new_content = new_content + " " + line + "\n"
-				logger.Println("ERRORRRRRR.........")
-				diagostics = append(diagostics, getDiagnostics(row, new_content)...)
+				diagostics = append(diagostics, getDiagnostics(logger, row, new_content)...)
+				new_content = ""
 			} else if end_char == " " {
 				new_content = new_content + line
 			} else{
@@ -50,9 +50,9 @@ func ProcessDocument(logger *log.Logger, text string) []lsp.Diagnostics {
 	return diagostics
 }
 
-func (s *State) OpenDocument(uri, text string) []lsp.Diagnostics {
+func (s *State) OpenDocument(logger *log.Logger, uri, text string) []lsp.Diagnostics {
 	s.Documents[uri] = text
-	return getDiagnostics(0,text)
+	return ProcessDocument(logger, s.Documents[uri])
 }
 
 func (s *State) UpdateDocument(logger *log.Logger, uri string, change lsp.TextDocumentContentChangeEvent) []lsp.Diagnostics {

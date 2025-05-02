@@ -57,7 +57,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 		logger.Printf("Opened: %s", request.Params.TextDocument.URI)
-		diagnostics := state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+		diagnostics := state.OpenDocument(logger, request.Params.TextDocument.URI, request.Params.TextDocument.Text)
 		writeResponse(writer, lsp.PublishDiagosticsNotification{
 			Notification: lsp.Notification{
 				RPC:    "2.0",

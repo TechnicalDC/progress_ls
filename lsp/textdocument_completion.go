@@ -45,9 +45,9 @@ type CompletionResponse struct {
 }
 
 type CompletionItem struct {
-	Label         string `json:"label"`
-	Detail        string `json:"detail"`
-	Documentation string `json:"documentation"`
-	Kind 			CompletionItemKind `json:"kind"`
+	Label         string             `json:"label"`
+	Detail        string             `json:"detail"`
+	Documentation string             `json:"documentation"`
+	Kind          CompletionItemKind `json:"kind"`
 }
 

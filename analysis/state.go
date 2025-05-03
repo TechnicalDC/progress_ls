@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"lsp-go/lsp"
+	"lsp-go/progress"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ func NewState() State {
 	}
 }
 
-func getDiagnostics(logger *log.Logger, row int, text string) []lsp.Diagnostics {
+func getDiagnostics(row int, text string) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
 
 	if len(strings.Split(text, ". ")) > 1 {
@@ -32,39 +33,71 @@ func getDiagnostics(logger *log.Logger, row int, text string) []lsp.Diagnostics 
 	return diagostics
 }
 
-func ProcessDocument(logger *log.Logger, text string) []lsp.Diagnostics {
-	var new_content string
-	var end_char string
+func (s *State) getKeyword(uri string, postion lsp.Position) string {
+	text := strings.Split(s.Documents[uri],"\n")[postion.Line]
+	text = text[postion.Character:]
+	return text
+}
+
+func ProcessDocument(logger *log.Logger, text string, builtin progress.ProgressKeywords) []lsp.Diagnostics {
+	var new_line   string
+	var end_char   string
+	var classes    []string
+	var methods    []string
+	var properties []string
 	diagostics := []lsp.Diagnostics{}
+
+	text = strings.Trim(text, " ")
+
+	// Process document for listing classes, methods, properties
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, "using") {
+			class := line[len("using "):]
+			classes = append(classes, class[:len(class) - 1])
+		}
+
+		if strings.HasPrefix(line, "method") {
+			method := strings.Split(line, " ")[3]
+			method = method[:strings.Index(method, "(")]
+			methods = append(methods, method)
+		}
+
+		if strings.Contains(line, "property") {
+			property := strings.Split(line, " ")[3]
+			properties = append(properties, property)
+		}
+	}
+
+	// Process document for diagostics
 	for row, line := range strings.Split(text, "\n") {
 		if line != "" {
 			end_char = line[len(line) - 1:]
 			if end_char == "." || end_char == ":" {
-				new_content = new_content + " " + line + "\n"
-				diagostics = append(diagostics, getDiagnostics(logger, row, new_content)...)
-				new_content = ""
+				new_line = new_line + " " + line + "\n"
+				diagostics = append(diagostics, getDiagnostics(row, new_line)...)
+				new_line = ""
 			} else if end_char == " " {
-				new_content = new_content + line
+				new_line = new_line + line
 			} else{
-				new_content = new_content + " " + line
+				new_line = new_line + " " + line
 			}
 		}
 	}
 	return diagostics
 }
 
-func (s *State) OpenDocument(logger *log.Logger, uri, text string) []lsp.Diagnostics {
+func (s *State) OpenDocument(logger *log.Logger, uri, text string, builtin progress.ProgressKeywords) []lsp.Diagnostics {
 	s.Documents[uri] = text
-	return ProcessDocument(logger, s.Documents[uri])
+	return ProcessDocument(logger, s.Documents[uri], builtin)
 }
 
-func (s *State) UpdateDocument(logger *log.Logger, uri string, change lsp.TextDocumentContentChangeEvent) []lsp.Diagnostics {
+func (s *State) UpdateDocument(logger *log.Logger, uri string, change lsp.TextDocumentContentChangeEvent, builtin progress.ProgressKeywords) []lsp.Diagnostics {
 	s.Documents[uri] = change.Text
-	return ProcessDocument(logger, s.Documents[uri])
+	return ProcessDocument(logger, s.Documents[uri], builtin)
 }
 
 func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverResponse {
-	document := s.Documents[uri]
+	// document := s.Documents[uri]
 
 	return lsp.HoverResponse{
 		Response: lsp.Response{
@@ -72,7 +105,7 @@ func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverRespon
 			ID:  &id,
 		},
 		Result:   lsp.HoverResult{
-			Contents: fmt.Sprintf("File: %s, Length: %d", uri, len(document)),
+			Contents: fmt.Sprintf("Text: %s ", s.getKeyword(uri, position) ),
 		},
 	}
 }

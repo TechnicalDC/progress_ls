@@ -7,6 +7,7 @@ import (
 	"log"
 	"lsp-go/analysis"
 	"lsp-go/lsp"
+	"lsp-go/progress"
 	"lsp-go/rpc"
 	"os"
 )
@@ -17,6 +18,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
 	state := analysis.NewState()
+	builtin := progress.InitializeKeywords(logger)
 	writer := os.Stdout
 
 	for scanner.Scan() {
@@ -27,11 +29,11 @@ func main() {
 			continue
 		}
 
-		handleMessage(logger, writer, state, method, content)
+		handleMessage(logger, writer, state, method, content, builtin)
 	}
 }
 
-func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, method string, content []byte) {
+func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, method string, content []byte, builtin progress.ProgressKeywords) {
 	logger.Printf("We recived mesage with method: %s", method)
 
 	switch method {
@@ -57,7 +59,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			return
 		}
 		logger.Printf("Opened: %s", request.Params.TextDocument.URI)
-		diagnostics := state.OpenDocument(logger, request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+		diagnostics := state.OpenDocument(logger, request.Params.TextDocument.URI, request.Params.TextDocument.Text, builtin)
 		writeResponse(writer, lsp.PublishDiagosticsNotification{
 			Notification: lsp.Notification{
 				RPC:    "2.0",
@@ -77,7 +79,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 		logger.Printf("Changed: %s", request.Params.TextDocument.URI)
 		logger.Printf("didChange: %s",content)
 		for _, change := range request.Params.ContentChanges {
-			diagnostics := state.UpdateDocument(logger, request.Params.TextDocument.URI, change)
+			diagnostics := state.UpdateDocument(logger, request.Params.TextDocument.URI, change, builtin)
 			writeResponse(writer, lsp.PublishDiagosticsNotification{
 				Notification: lsp.Notification{
 					RPC:    "2.0",

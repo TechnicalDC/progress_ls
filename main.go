@@ -98,7 +98,7 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analysis.State, m
 			logger.Printf("textDocument/hover: %s", err)
 			return
 		}
-		response = state.Hover(request.ID, request.Params.TextDocument.URI, request.Params.Position)
+		response = state.Hover(request.ID, request.Params.TextDocument.URI, request.Params.Position, builtin)
 		writeResponse(writer, response)
 	case "textDocument/definition":
 		var request lsp.DefinitionRequest

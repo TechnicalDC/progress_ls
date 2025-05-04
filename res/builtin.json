@@ -1496,7 +1496,7 @@
       { "name": "use-text", "kind": 14, "description": ""},
       { "name": "use-underline", "kind": 14, "description": ""},
       { "name": "use-widget-pool", "kind": 14, "description": ""},
-      { "name": "using", "kind": 14, "description": ""},
+      { "name": "using", "kind": 14, "description": "testing the hover"},
       { "name": "v6display", "kind": 14, "description": ""},
       { "name": "v6frame", "kind": 14, "description": ""},
       { "name": "validate", "kind": 14, "description": ""},

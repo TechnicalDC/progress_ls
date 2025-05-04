@@ -25,6 +25,18 @@ func (p *ProgressKeywords) IsBuiltin(keyword string) bool {
 	}
 	return false
 }
+func (p *ProgressKeywords) GetDescription(keyword string) string {
+	for _, builtin := range p.ProgressKeyword {
+		if builtin.Name == keyword {
+			if builtin.Description != "" {
+				return builtin.Description
+			} else {
+				return builtin.Name
+			}
+		}
+	}
+	return ""
+}
 
 func InitializeKeywords(logger *log.Logger) ProgressKeywords {
 	var keywords ProgressKeywords

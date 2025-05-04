@@ -18,16 +18,48 @@ func NewState() State {
 	}
 }
 
-func getDiagnostics(row int, text string) []lsp.Diagnostics {
+func getDiagnostics(logger *log.Logger,row int, text string, types progress.ProgressTypes) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
+	found := false
+	text = strings.Trim(text, " ")
+	var datatype string
 
 	if len(strings.Split(text, ". ")) > 1 {
 		diagostics = append(diagostics, createDiagnostics(row, row, len(text), "single line cannot contains multiple statements"))
 	}
 
+	logger.Println(text)
+	text = text[:len(text) - 2]
+	logger.Println(text)
+
 	if strings.Contains(text, "define variable") {
 		if !strings.Contains(text, "no-undo") {
 			diagostics = append(diagostics, createDiagnostics(row, row, len(text), "no-undo is missing"))
+		}
+	}
+
+	if strings.Contains(text, "property") || strings.Contains(text, "variable") {
+		split := strings.Split(text, " ")
+
+		if split[1] != progress.ProgressPrivate && split[1] != progress.ProgressProtected && split[1] != progress.ProgressPublic {
+			datatype = split[4]
+		} else {
+			datatype = split[5]
+		}
+
+		if progress.IsDefaultDataType(datatype) {
+			found = true
+		} else {
+			for _, class := range types.Classes {
+				if strings.Contains(class, datatype) {
+					found = true
+					break
+				}
+			}
+		}
+
+		if !found {
+			diagostics = append(diagostics, createDiagnostics(row, row, len(text), "class is not imported. Import the class with using statement"))
 		}
 	}
 	return diagostics
@@ -35,16 +67,17 @@ func getDiagnostics(row int, text string) []lsp.Diagnostics {
 
 func (s *State) getKeyword(uri string, postion lsp.Position) string {
 	text := strings.Split(s.Documents[uri],"\n")[postion.Line]
-	text = text[postion.Character:]
+	text = strings.Split(text[postion.Character:], " ")[0]
 	return text
 }
 
-func ProcessDocument(logger *log.Logger, text string, builtin progress.ProgressKeywords) []lsp.Diagnostics {
+func ProcessDocument(logger *log.Logger, uri string, text string, builtin progress.ProgressKeywords) []lsp.Diagnostics {
 	var new_line   string
 	var end_char   string
 	var classes    []string
 	var methods    []string
 	var properties []string
+	var types 		progress.ProgressTypes
 	diagostics := []lsp.Diagnostics{}
 
 	text = strings.Trim(text, " ")
@@ -68,13 +101,20 @@ func ProcessDocument(logger *log.Logger, text string, builtin progress.ProgressK
 		}
 	}
 
+	types = progress.ProgressTypes{
+		URI:        uri,
+		Classes:    classes,
+		Methods:    methods,
+		Properties: properties,
+	}
+
 	// Process document for diagostics
 	for row, line := range strings.Split(text, "\n") {
 		if line != "" {
 			end_char = line[len(line) - 1:]
 			if end_char == "." || end_char == ":" {
 				new_line = new_line + " " + line + "\n"
-				diagostics = append(diagostics, getDiagnostics(row, new_line)...)
+				diagostics = append(diagostics, getDiagnostics(logger, row, new_line, types)...)
 				new_line = ""
 			} else if end_char == " " {
 				new_line = new_line + line
@@ -88,16 +128,22 @@ func ProcessDocument(logger *log.Logger, text string, builtin progress.ProgressK
 
 func (s *State) OpenDocument(logger *log.Logger, uri, text string, builtin progress.ProgressKeywords) []lsp.Diagnostics {
 	s.Documents[uri] = text
-	return ProcessDocument(logger, s.Documents[uri], builtin)
+	return ProcessDocument(logger, uri, s.Documents[uri], builtin)
 }
 
 func (s *State) UpdateDocument(logger *log.Logger, uri string, change lsp.TextDocumentContentChangeEvent, builtin progress.ProgressKeywords) []lsp.Diagnostics {
 	s.Documents[uri] = change.Text
-	return ProcessDocument(logger, s.Documents[uri], builtin)
+	return ProcessDocument(logger, uri, s.Documents[uri], builtin)
 }
 
-func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverResponse {
-	// document := s.Documents[uri]
+func (s *State) Hover(id int, uri string, position lsp.Position, builtin progress.ProgressKeywords) lsp.HoverResponse {
+	keyword := s.getKeyword(uri, position)
+	var content string
+	var desc string
+	if builtin.IsBuiltin(keyword) {
+		desc = builtin.GetDescription(keyword)
+	}
+	content = fmt.Sprintf("# %s\n---\n%s", keyword, desc)
 
 	return lsp.HoverResponse{
 		Response: lsp.Response{
@@ -105,7 +151,8 @@ func (s *State) Hover(id int, uri string, position lsp.Position) lsp.HoverRespon
 			ID:  &id,
 		},
 		Result:   lsp.HoverResult{
-			Contents: fmt.Sprintf("Text: %s ", s.getKeyword(uri, position) ),
+			Contents: content,
+			// Contents: fmt.Sprintf("Text: %s ", s.getKeyword(uri, position) ),
 		},
 	}
 }

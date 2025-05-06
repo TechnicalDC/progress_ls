@@ -1,5 +1,7 @@
 package progress
 
+import "strings"
+
 const (
 	ProgressPublic    string = "public"
 	ProgressProtected string = "protected"
@@ -29,6 +31,37 @@ type ProgressTypes struct {
 	Classes    []string
 	Methods    []string
 	Properties []string
+}
+
+const (
+	ProgressLVC string = "lvc_"
+	ProgressLVL string = "lvl_"
+	ProgressLVI string = "lvi_"
+	ProgressLVD string = "lvd_"
+	ProgressIVC string = "ivc_"
+	ProgressIVL string = "ivl_"
+	ProgressIVD string = "ivi_"
+	ProgressIVI string = "ivd_"
+	ProgressOVC string = "ovc_"
+	ProgressOVL string = "ovl_"
+	ProgressOVD string = "ovi_"
+	ProgressOVI string = "ovd_"
+)
+
+func FoundRestrictedText(text string) bool {
+	if strings.Contains(text, ProgressLVC) { return true }
+	if strings.Contains(text, ProgressLVL) { return true }
+	if strings.Contains(text, ProgressLVI) { return true }
+	if strings.Contains(text, ProgressLVD) { return true }
+	if strings.Contains(text, ProgressIVC) { return true }
+	if strings.Contains(text, ProgressIVL) { return true }
+	if strings.Contains(text, ProgressIVD) { return true }
+	if strings.Contains(text, ProgressIVI) { return true }
+	if strings.Contains(text, ProgressOVC) { return true }
+	if strings.Contains(text, ProgressOVL) { return true }
+	if strings.Contains(text, ProgressOVD) { return true }
+	if strings.Contains(text, ProgressOVI) { return true }
+	return false
 }
 
 func IsDefaultDataType(text string) bool {

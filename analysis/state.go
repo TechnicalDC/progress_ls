@@ -25,20 +25,16 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 	var datatype string
 
 	if len(strings.Split(text, ". ")) > 1 {
-		diagostics = append(diagostics, createDiagnostics(row, row, len(text), "single line cannot contains multiple statements"))
+		diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "single line cannot contains multiple statements"))
 	}
 
-	logger.Println(text)
 	text = text[:len(text) - 2]
-	logger.Println(text)
-
-	if strings.Contains(text, "define variable") {
-		if !strings.Contains(text, "no-undo") {
-			diagostics = append(diagostics, createDiagnostics(row, row, len(text), "no-undo is missing"))
-		}
-	}
 
 	if strings.Contains(text, "property") || strings.Contains(text, "variable") {
+		if !strings.Contains(text, "no-undo") {
+			diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "no-undo is missing"))
+		}
+
 		split := strings.Split(text, " ")
 
 		if split[1] != progress.ProgressPrivate && split[1] != progress.ProgressProtected && split[1] != progress.ProgressPublic {
@@ -59,9 +55,22 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 		}
 
 		if !found {
-			diagostics = append(diagostics, createDiagnostics(row, row, len(text), "class is not imported. Import the class with using statement"))
+			idx := strings.Index(text, datatype)
+			diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
 		}
 	}
+
+	if strings.Contains(text, "this-object") {
+		idx := strings.Index(text, ":") + 1
+		idx1 := strings.Index(text, " (")
+		idx2 := strings.Index(text, "(")
+		logger.Println(idx, idx1, idx2)
+	}
+
+	if progress.FoundRestrictedText(text) {
+		// TODO: Need to add the logic here
+	}
+
 	return diagostics
 }
 
@@ -179,23 +188,23 @@ func (s *State) Definition(id int, uri string, position lsp.Position) lsp.Defini
 	}
 }
 
-func createDiagnostics(srow, erow, line int, message string) lsp.Diagnostics {
+func createDiagnostics(row, start, end int, message string) lsp.Diagnostics {
 	return lsp.Diagnostics{
-		Range:    LineRange(srow, erow, 0, line),
+		Range:    LineRange(row, start, end),
 		Severity: 1,
 		Source:   "progress_ls",
 		Message:  message,
 	}
 }
 
-func LineRange(sline, eline, start, end int) lsp.Range {
+func LineRange(line, start, end int) lsp.Range {
 	return lsp.Range{
 		Start: lsp.Position{
-			Line:      sline,
+			Line:      line,
 			Character: start,
 		},
 		End:   lsp.Position{
-			Line:      eline,
+			Line:      line,
 			Character: end,
 		},
 	}
@@ -211,7 +220,7 @@ func (s *State) CodeAction(id int, uri string) lsp.CodeActionResponse {
 			replaceChange := map[string][]lsp.TextEdit{}
 			replaceChange[uri] = []lsp.TextEdit{
 				{
-					Range: LineRange(row, row, idx, idx + len("VS Code")),
+					Range: LineRange(row, idx, idx + len("VS Code")),
 					NewText: "Neovim",
 				},
 			}
@@ -224,7 +233,7 @@ func (s *State) CodeAction(id int, uri string) lsp.CodeActionResponse {
 			censorChanges := map[string][]lsp.TextEdit{}
 			censorChanges[uri] = []lsp.TextEdit{
 				{
-					Range:   LineRange(row, row, idx, idx + len("VS Code")),
+					Range:   LineRange(row, idx, idx + len("VS Code")),
 					NewText: "VS C*de",
 				},
 			}

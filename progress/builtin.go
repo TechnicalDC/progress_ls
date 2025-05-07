@@ -3,7 +3,7 @@ package progress
 import (
 	"encoding/json"
 	"log"
-	"lsp-go/lsp"
+	"progress_ls/lsp"
 	"os"
 )
 

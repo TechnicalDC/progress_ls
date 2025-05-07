@@ -3,8 +3,8 @@ package analysis
 import (
 	"fmt"
 	"log"
-	"lsp-go/lsp"
-	"lsp-go/progress"
+	"progress_ls/lsp"
+	"progress_ls/progress"
 	"strings"
 )
 

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"lsp-go/analysis"
-	"lsp-go/lsp"
-	"lsp-go/progress"
-	"lsp-go/rpc"
+	"progress_ls/analysis"
+	"progress_ls/lsp"
+	"progress_ls/progress"
+	"progress_ls/rpc"
 	"os"
 )
 

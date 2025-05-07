@@ -23,6 +23,7 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 	found := false
 	text = strings.Trim(text, " ")
 	var datatype string
+	var propertyMethod string
 
 	if len(strings.Split(text, ". ")) > 1 {
 		diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "single line cannot contains multiple statements"))
@@ -30,41 +31,66 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 
 	text = text[:len(text) - 2]
 
-	if strings.Contains(text, "property") || strings.Contains(text, "variable") {
-		if !strings.Contains(text, "no-undo") {
-			diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "no-undo is missing"))
-		}
+	if strings.HasPrefix(text, "define") {
+		if strings.Contains(text, "property") || strings.Contains(text, "variable") {
+			if !strings.Contains(text, "no-undo") {
+				diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "no-undo is missing"))
+			}
 
-		split := strings.Split(text, " ")
+			split := strings.Split(text, " ")
 
-		if split[1] != progress.ProgressPrivate && split[1] != progress.ProgressProtected && split[1] != progress.ProgressPublic {
-			datatype = split[4]
-		} else {
-			datatype = split[5]
-		}
+			if split[1] != progress.ProgressPrivate && split[1] != progress.ProgressProtected && split[1] != progress.ProgressPublic {
+				datatype = split[4]
+			} else {
+				datatype = split[5]
+			}
 
-		if progress.IsDefaultDataType(datatype) {
-			found = true
-		} else {
-			for _, class := range types.Classes {
-				if strings.Contains(class, datatype) {
-					found = true
-					break
+			if progress.IsDefaultDataType(datatype) {
+				found = true
+			} else {
+				for _, class := range types.Classes {
+					if strings.Contains(class, datatype) {
+						found = true
+						break
+					}
 				}
+			}
+
+			if !found {
+				idx := strings.Index(text, datatype)
+				diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
+			}
+		}
+	}
+
+	if strings.Contains(text, "this-object:") {
+		for _, this := range types.Methods {
+			if strings.Contains(text, this) {
+				logger.Println(this)
+				found = true
+				break
+			}
+		}
+
+		for _, this := range types.Properties {
+			if strings.Contains(text, this) {
+				logger.Println(this)
+				found = true
+				break
 			}
 		}
 
 		if !found {
-			idx := strings.Index(text, datatype)
-			diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
+			for _, char := range text[len("this-object:"):] {
+				if string(char) != "." && string(char) != "(" && string(char) != " " {
+					propertyMethod = propertyMethod + string(char)
+				} else {
+					break
+				}
+			}
+			idx := strings.Index(text, propertyMethod)
+			diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(propertyMethod), "undefined property/method"))
 		}
-	}
-
-	if strings.Contains(text, "this-object") {
-		idx := strings.Index(text, ":") + 1
-		idx1 := strings.Index(text, " (")
-		idx2 := strings.Index(text, "(")
-		logger.Println(idx, idx1, idx2)
 	}
 
 	if progress.FoundRestrictedText(text) {

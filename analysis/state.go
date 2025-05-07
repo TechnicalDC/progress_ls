@@ -26,7 +26,7 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 	var propertyMethod string
 
 	if len(strings.Split(text, ". ")) > 1 {
-		diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "single line cannot contains multiple statements"))
+		diagostics = append(diagostics, createError(row, 0, len(text), "single line cannot contains multiple statements"))
 	}
 
 	text = text[:len(text) - 2]
@@ -34,7 +34,7 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 	if strings.HasPrefix(text, "define") {
 		if strings.Contains(text, "property") || strings.Contains(text, "variable") {
 			if !strings.Contains(text, "no-undo") {
-				diagostics = append(diagostics, createDiagnostics(row, 0, len(text), "no-undo is missing"))
+				diagostics = append(diagostics, createError(row, 0, len(text), "no-undo is missing"))
 			}
 
 			split := strings.Split(text, " ")
@@ -58,7 +58,7 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 
 			if !found {
 				idx := strings.Index(text, datatype)
-				diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
+				diagostics = append(diagostics, createError(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
 			}
 		}
 	}
@@ -66,7 +66,6 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 	if strings.Contains(text, "this-object:") {
 		for _, this := range types.Methods {
 			if strings.Contains(text, this) {
-				logger.Println(this)
 				found = true
 				break
 			}
@@ -74,7 +73,6 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 
 		for _, this := range types.Properties {
 			if strings.Contains(text, this) {
-				logger.Println(this)
 				found = true
 				break
 			}
@@ -89,12 +87,14 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 				}
 			}
 			idx := strings.Index(text, propertyMethod)
-			diagostics = append(diagostics, createDiagnostics(row, idx, idx + len(propertyMethod), "undefined property/method"))
+			diagostics = append(diagostics, createError(row, idx, idx + len(propertyMethod), "undefined property/method"))
 		}
 	}
 
 	if progress.FoundRestrictedText(text) {
 		// TODO: Need to add the logic here
+		logger.Println(text)
+		diagostics = append(diagostics, createWarning(row, 0, len(text), "undefined property/method"))
 	}
 
 	return diagostics
@@ -214,10 +214,19 @@ func (s *State) Definition(id int, uri string, position lsp.Position) lsp.Defini
 	}
 }
 
-func createDiagnostics(row, start, end int, message string) lsp.Diagnostics {
+func createError(row, start, end int, message string) lsp.Diagnostics {
 	return lsp.Diagnostics{
 		Range:    LineRange(row, start, end),
 		Severity: 1,
+		Source:   "progress_ls",
+		Message:  message,
+	}
+}
+
+func createWarning(row, start, end int, message string) lsp.Diagnostics {
+	return lsp.Diagnostics{
+		Range:    LineRange(row, start, end),
+		Severity: 2,
 		Source:   "progress_ls",
 		Message:  message,
 	}

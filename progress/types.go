@@ -48,20 +48,21 @@ const (
 	ProgressOVI string = "ovd_"
 )
 
-func FoundRestrictedText(text string) bool {
-	if strings.Contains(text, ProgressLVC) { return true }
-	if strings.Contains(text, ProgressLVL) { return true }
-	if strings.Contains(text, ProgressLVI) { return true }
-	if strings.Contains(text, ProgressLVD) { return true }
-	if strings.Contains(text, ProgressIVC) { return true }
-	if strings.Contains(text, ProgressIVL) { return true }
-	if strings.Contains(text, ProgressIVD) { return true }
-	if strings.Contains(text, ProgressIVI) { return true }
-	if strings.Contains(text, ProgressOVC) { return true }
-	if strings.Contains(text, ProgressOVL) { return true }
-	if strings.Contains(text, ProgressOVD) { return true }
-	if strings.Contains(text, ProgressOVI) { return true }
-	return false
+func IndexOfRestrictedText(text string) int {
+	var idx int
+	if idx <= 0 {idx = strings.Index(text, ProgressLVC)}
+	if idx <= 0 {idx = strings.Index(text, ProgressLVL)}
+	if idx <= 0 {idx = strings.Index(text, ProgressLVI)}
+	if idx <= 0 {idx = strings.Index(text, ProgressLVD)}
+	if idx <= 0 {idx = strings.Index(text, ProgressIVC)}
+	if idx <= 0 {idx = strings.Index(text, ProgressIVL)}
+	if idx <= 0 {idx = strings.Index(text, ProgressIVD)}
+	if idx <= 0 {idx = strings.Index(text, ProgressIVI)}
+	if idx <= 0 {idx = strings.Index(text, ProgressOVC)}
+	if idx <= 0 {idx = strings.Index(text, ProgressOVL)}
+	if idx <= 0 {idx = strings.Index(text, ProgressOVD)}
+	if idx <= 0 {idx = strings.Index(text, ProgressOVI)}
+	return idx
 }
 
 func IsDefaultDataType(text string) bool {

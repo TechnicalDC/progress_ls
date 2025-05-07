@@ -18,32 +18,42 @@ func NewState() State {
 	}
 }
 
-func getDiagnostics(logger *log.Logger,row int, text string, types progress.ProgressTypes) []lsp.Diagnostics {
+func getDiagnostics(logger *log.Logger,row int, line string, types progress.ProgressTypes) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
 	found := false
-	text = strings.Trim(text, " ")
+	trimmed_text := strings.Trim(line, " ")
 	var datatype string
 	var propertyMethod string
+	var idx int
+	var text string
 
-	if len(strings.Split(text, ". ")) > 1 {
-		diagostics = append(diagostics, createError(row, 0, len(text), "single line cannot contains multiple statements"))
+	if len(strings.Split(trimmed_text, ". ")) > 1 {
+		diagostics = append(diagostics, createError(row, 0, len(trimmed_text), "single line cannot contains multiple statements"))
 	}
 
-	text = text[:len(text) - 2]
+	// trimmed_text = trimmed_text[:len(trimmed_text) - 2]
+	for _, splits := range strings.Split(trimmed_text[:len(trimmed_text) - 2]," ") {
+		if splits != "" {
+			text = text + " " + splits
+		}
+	}
 
-	if strings.HasPrefix(text, "define") {
+	if strings.Contains(text, "define") {
 		if strings.Contains(text, "property") || strings.Contains(text, "variable") {
 			if !strings.Contains(text, "no-undo") {
 				diagostics = append(diagostics, createError(row, 0, len(text), "no-undo is missing"))
 			}
 
-			split := strings.Split(text, " ")
+			split := strings.Split(strings.Trim(text," "), " ")
 
 			if split[1] != progress.ProgressPrivate && split[1] != progress.ProgressProtected && split[1] != progress.ProgressPublic {
 				datatype = split[4]
 			} else {
 				datatype = split[5]
 			}
+
+			logger.Println("datatype", datatype)
+			logger.Println("split", split)
 
 			if progress.IsDefaultDataType(datatype) {
 				found = true
@@ -57,10 +67,15 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 			}
 
 			if !found {
-				idx := strings.Index(text, datatype)
+				idx = strings.Index(line, datatype) - 1
 				diagostics = append(diagostics, createError(row, idx, idx + len(datatype), "class is not imported. Import the class with using statement"))
 			}
 		}
+	}
+
+	if idx = progress.IndexOfRestrictedText(line); idx > 0 {
+		// TODO: Need to add the logic here
+		diagostics = append(diagostics, createWarning(row, idx - 1, len(line), "undefined property/method"))
 	}
 
 	if strings.Contains(text, "this-object:") {
@@ -79,22 +94,16 @@ func getDiagnostics(logger *log.Logger,row int, text string, types progress.Prog
 		}
 
 		if !found {
-			for _, char := range text[len("this-object:"):] {
+			for _, char := range line[strings.Index(line, ":") + 1:] {
 				if string(char) != "." && string(char) != "(" && string(char) != " " {
 					propertyMethod = propertyMethod + string(char)
 				} else {
 					break
 				}
 			}
-			idx := strings.Index(text, propertyMethod)
+			idx = strings.Index(line, propertyMethod) - 1
 			diagostics = append(diagostics, createError(row, idx, idx + len(propertyMethod), "undefined property/method"))
 		}
-	}
-
-	if progress.FoundRestrictedText(text) {
-		// TODO: Need to add the logic here
-		logger.Println(text)
-		diagostics = append(diagostics, createWarning(row, 0, len(text), "undefined property/method"))
 	}
 
 	return diagostics
@@ -119,6 +128,7 @@ func ProcessDocument(logger *log.Logger, uri string, text string, builtin progre
 
 	// Process document for listing classes, methods, properties
 	for _, line := range strings.Split(text, "\n") {
+		line = strings.Trim(line, " ")
 		if strings.HasPrefix(line, "using") {
 			class := line[len("using "):]
 			classes = append(classes, class[:len(class) - 1])

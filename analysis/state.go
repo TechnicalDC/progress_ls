@@ -18,6 +18,18 @@ func NewState() State {
 	}
 }
 
+func getWord(idx int, line string) string {
+	var text string
+	for _, char := range line[idx:] {
+		if string(char) != "." && string(char) != "(" && string(char) != " " {
+			text = text + string(char)
+		} else {
+			break
+		}
+	}
+	return text
+}
+
 func getDiagnostics(logger *log.Logger,row int, line string, types progress.ProgressTypes) []lsp.Diagnostics {
 	diagostics := []lsp.Diagnostics{}
 	found := false
@@ -31,7 +43,6 @@ func getDiagnostics(logger *log.Logger,row int, line string, types progress.Prog
 		diagostics = append(diagostics, createError(row, 0, len(trimmed_text), "single line cannot contains multiple statements"))
 	}
 
-	// trimmed_text = trimmed_text[:len(trimmed_text) - 2]
 	for _, splits := range strings.Split(trimmed_text[:len(trimmed_text) - 2]," ") {
 		if splits != "" {
 			text = text + " " + splits
@@ -41,7 +52,8 @@ func getDiagnostics(logger *log.Logger,row int, line string, types progress.Prog
 	if strings.Contains(text, "define") {
 		if strings.Contains(text, "property") || strings.Contains(text, "variable") {
 			if !strings.Contains(text, "no-undo") {
-				diagostics = append(diagostics, createError(row, 0, len(text), "no-undo is missing"))
+				idx = strings.Index(line, "define") - 1
+				diagostics = append(diagostics, createError(row, idx, idx + len(text), "no-undo is missing"))
 			}
 
 			split := strings.Split(strings.Trim(text," "), " ")
@@ -51,9 +63,6 @@ func getDiagnostics(logger *log.Logger,row int, line string, types progress.Prog
 			} else {
 				datatype = split[5]
 			}
-
-			logger.Println("datatype", datatype)
-			logger.Println("split", split)
 
 			if progress.IsDefaultDataType(datatype) {
 				found = true
@@ -73,9 +82,8 @@ func getDiagnostics(logger *log.Logger,row int, line string, types progress.Prog
 		}
 	}
 
-	if idx = progress.IndexOfRestrictedText(line); idx > 0 {
-		// TODO: Need to add the logic here
-		diagostics = append(diagostics, createWarning(row, idx - 1, len(line), "undefined property/method"))
+	if idx = progress.IndexOfRestrictedText(line) ; idx > 0 {
+		diagostics = append(diagostics, createWarning(row, idx - 1, idx + len(getWord(idx, line)) - 1, "incorrect format for variable name, use PascalCase or camelCase format"))
 	}
 
 	if strings.Contains(text, "this-object:") {
